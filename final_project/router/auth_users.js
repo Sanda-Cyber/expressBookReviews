@@ -58,56 +58,43 @@ regd_users.post('/login', (req, res) => {
 // auth_users.js
 
 regd_users.put("/auth/review/:isbn", (req, res) => {
-  const { username, review } = req.body;
   const isbn = req.params.isbn;
 
-  // Search the book by ISBN
-  const book = books[isbn];
-  if (!book) {
-    return res.status(404).json({ message: "Book not found." });
-  }
+  let filtered_book = books[isbn];
 
-  // Check if the user already has a review for this book
-  const existingReviewIndex = book.reviews.findIndex(review => review.username === username);
-  if (existingReviewIndex!== -1) {
-    // Modify the existing review
-    book.reviews[existingReviewIndex].content = review;
-    return res.status(200).json({ message: "Review updated successfully." });
+  if (filtered_book) {
+    let review = req.query.review;
+    let reviewer = req.session.authorization['username'];
+
+    if (review) {
+      filtered_book['reviews'][reviewer] = review;
+      books[isbn] = filtered_book;
+
+      res.send(
+        `The review for the book with ISBN ${isbn} has been added/updated.`
+      );
+    }
   } else {
-    // Add a new review
-    book.reviews.push({ username, content: review });
-    return res.status(201).json({ message: `The review for the book with ISBM ${isbn} has been  added/updated .`});
+    res.send("Unable to find this ISBN!");
   }
 });
 
 
 // Add this route DELETE 
-// Path to delete the review of a specific book by its ISBN
-regd_users.delete('/auth/review/:isbn/:username', (req, res) => {
-  const { isbn, username } = req.params;
-  const reviewToDelete = 'good';
+// Deleting a book review
 
-  // Search for the book by its ISBN
-  const book = books[isbn];
-
-  // Check if the book was found
-  if (!book) {
-    return res.status(404).json({ message: 'Book not found.' });
-  }
-
-  // Find and delete the specific review
-  const reviewIndex = book.reviews.findIndex(r => r.content === reviewToDelete && r.username === username);
-
-  // Check if the review was found
-  if (reviewIndex === -1) {
-    return res.status(404).json({ message: 'Review not found for this user.' });
-  }
-
-  // Delete the corresponding review
-  book.reviews.splice(reviewIndex, 1);
-  return res.status(200).json({ message: `Review for the ISBN ${isbn} deleted for the user ${username}.` });
-});
-
+regd_users.delete("/auth/review/:isbn", (req, res) => {
+    const isbn = req.params.isbn;
+    let reviewer = req.session.authorization['username'];
+    let filtered_review = books[isbn]["reviews"];
+    if (filtered_review[reviewer]){
+        delete filtered_review[reviewer];
+        res.send(`Review for the ISBN ${isbn} posted by the user ${reviewer} deleted.`);
+    }
+    else{
+        res.send("Can't delete, as this review has been posted by a different user");
+    }
+    });
 
 
 
